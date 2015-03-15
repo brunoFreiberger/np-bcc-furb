@@ -4,6 +4,9 @@ import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -21,18 +24,20 @@ import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
+import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 /**
  * Alunos:
  * 	- Bruno Henrique Freiberger
  * 	- Cleyson Gustavo Reinhold
  */
-public class Manipulacao extends JFrame implements ActionListener{
+public class Manipulacao extends JFrame implements ActionListener, DocumentListener{
 	/**
 	 * 
 	 */
-	private static final long serialVersionUID = -5783665847537775600L;
 
 	public static final String INIT_DIR_FCHOOSER = "C:\\";
 	public static final String PROG_NAME = "np-bcc-furb";
@@ -45,7 +50,6 @@ public class Manipulacao extends JFrame implements ActionListener{
 	//Menu
 	JMenu menuArquivo;
 	JMenu menuEditar;
-	JMenu menuCredits;
 	
 	//Itens de menu
 	JMenuItem miAbrir;
@@ -57,7 +61,9 @@ public class Manipulacao extends JFrame implements ActionListener{
 	JMenuItem miInfo;
 	
 	Path path = null;
-
+	boolean modificado = false;
+	String fileName = "";
+	
 	private JFileChooser jfc;
 	
 	public Manipulacao() {
@@ -69,8 +75,6 @@ public class Manipulacao extends JFrame implements ActionListener{
 	}
 	
 	public void defineLayout(){
-		this.setDefaultCloseOperation(EXIT_ON_CLOSE);
-		
 		this.setLayout(new BorderLayout());
 		this.setSize(800,600);
 		this.setVisible(true);
@@ -87,13 +91,8 @@ public class Manipulacao extends JFrame implements ActionListener{
 		this.menuEditar.setText("Editar");
 		this.menuEditar.setMnemonic(KeyEvent.VK_F);
 		
-		this.menuCredits = new JMenu();
-		this.menuCredits.setText("Sobre");
-		this.menuCredits.setMnemonic(KeyEvent.VK_F);
-		
 		this.menuBar.add(this.menuArquivo);
 		this.menuBar.add(this.menuEditar);
-		this.menuBar.add(this.menuCredits);
 		
 		//Cria item de menu
 		
@@ -103,8 +102,6 @@ public class Manipulacao extends JFrame implements ActionListener{
 		this.miSalvar = new JMenuItem();
 		this.miSalvarComo = new JMenuItem();
 		this.miFechar = new JMenuItem();
-		
-		//Editar
 		
 		//About
 		this.miInfo = new JMenuItem();
@@ -117,6 +114,8 @@ public class Manipulacao extends JFrame implements ActionListener{
 		this.miFechar.addActionListener(this);
 		
 		this.miInfo.addActionListener(this);
+		
+		this.textArea.getDocument().addDocumentListener(this);
 		
 		//Atribui texto dos itens de menu
 		this.miNovo.setText("Novo");
@@ -134,9 +133,18 @@ public class Manipulacao extends JFrame implements ActionListener{
 		this.menuArquivo.add(this.miSalvarComo);
 		this.menuArquivo.add(this.miFechar);
 		
-		this.menuCredits.add(this.miInfo);
+		this.menuEditar.add(this.miInfo);
 		
-		this.add(textArea, BorderLayout.CENTER);
+		WindowListener exitListener = new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+            	salvarAoSair();
+            }
+        };
+        this.addWindowListener(exitListener);
+		
+		JScrollPane scrollPane = new JScrollPane(textArea);
+		this.add(scrollPane, BorderLayout.CENTER);
 		
 		this.setJMenuBar(menuBar);
 		this.revalidate();
@@ -144,16 +152,35 @@ public class Manipulacao extends JFrame implements ActionListener{
 	
 	/**
 	 * Abrir arquivo
-	 * @created 11/03/2015 - 17:55:15
-	 * @return
 	 */
 	public void openFile(){
 		jfc = new JFileChooser();
 		jfc.setCurrentDirectory(new File(Manipulacao.INIT_DIR_FCHOOSER)); // Definir diretório inicial que o FChooser vai abrir(C:)
 		int opt = jfc.showOpenDialog(null);
+		Path pathTemp = null;
 		if(opt == JFileChooser.APPROVE_OPTION){
-			this.path = Paths.get(jfc.getSelectedFile().toURI());
+			pathTemp = Paths.get(jfc.getSelectedFile().toURI());
 		}
+		if(modificado){
+			int accept = 0;
+			accept = JOptionPane.showConfirmDialog(null, "Deseja salvar antes de criar um novo arquivo?");
+			if(accept == JOptionPane.YES_OPTION){
+				if(path != null)
+					this.salvarFile(textArea.getText());
+				else
+					this.salvarComoFile(textArea.getText());
+			}
+			if(accept != JOptionPane.CANCEL_OPTION){
+				escreveTexto(pathTemp);
+			}
+		}
+		else{
+			escreveTexto(pathTemp);
+		}
+	}
+	
+	private void escreveTexto(Path pathTemp){
+		this.path = pathTemp;
 		String line = null;
 		try {
 			File file = jfc.getSelectedFile();
@@ -168,6 +195,7 @@ public class Manipulacao extends JFrame implements ActionListener{
 						this.textArea.append("\n"+line);
 					}
 				}
+				this.modificado = false;
 				this.defineTitle(this.getNomeArquivo(file.toPath()));
 				br.close();
 			}
@@ -179,11 +207,22 @@ public class Manipulacao extends JFrame implements ActionListener{
 	}
 	
 	private void defineTitle(String fileName){
-		this.setTitle(fileName + " - " + Manipulacao.PROG_NAME);
+		if(path != null) //COMENTAR ESSA CONDIÇÃO PARA QUE O TÍTULO SEJA O NOME DO ARQUIVO
+			this.fileName = path.toString();
+		else
+			this.fileName = fileName;
+		defineTitle();
+	}
+	
+	private void defineTitle(){
+		String titulo = this.fileName;
+		if(modificado)
+			titulo += " *";
+		this.setTitle(titulo + " - " + Manipulacao.PROG_NAME);
 	}
 	
 	private void salvarAoSair(){
-		if(!textArea.getText().isEmpty()){
+		if(modificado){
 			int accept = 0;
 			accept = JOptionPane.showConfirmDialog(null, "Deseja salvar antes de sair?");
 			if(accept == JOptionPane.YES_OPTION){
@@ -199,9 +238,6 @@ public class Manipulacao extends JFrame implements ActionListener{
 
 	/**
 	 * Verifica se o arquivo já existe
-	 * @param f
-	 * @param content
-	 * @return
 	 */
 	public boolean arquivoNExistente(File f, String content){
 		int accept = 0;
@@ -230,18 +266,35 @@ public class Manipulacao extends JFrame implements ActionListener{
 	
 	/**
 	 * Novo arquivo
-	 * @created 12/03/2015 - 18:13:21
 	 */
 	public void novoArquivo(){
+		if(modificado){
+			int accept = 0;
+			accept = JOptionPane.showConfirmDialog(null, "Deseja salvar antes de criar um novo arquivo?");
+			if(accept == JOptionPane.YES_OPTION){
+				if(path != null)
+					this.salvarFile(textArea.getText());
+				else
+					this.salvarComoFile(textArea.getText());
+			}
+			if(accept != JOptionPane.CANCEL_OPTION){
+				zeraTextArea();
+			}
+		}
+		else{
+			zeraTextArea();
+		}
+	}
+	
+	public void zeraTextArea(){
 		this.path = null;
 		this.textArea.setText(null);
+		this.modificado = false;
 		this.defineTitle("Sem título");
 	}
 	
 	/**
 	 * Retorna o nome do arquivo selecionado
-	 * @created 12/03/2015 - 17:42:21
-	 * @param path
 	 */
 	private String getNomeArquivo(Path path){
 		return String.valueOf(path.getFileName());
@@ -249,8 +302,6 @@ public class Manipulacao extends JFrame implements ActionListener{
 	
 	/**
 	 * Fechar arquivo após escrever
-	 * @created 11/03/2015 - 18:00:47
-	 * @param f
 	 */
 	private void closeF(BufferedWriter bw){
 		try {
@@ -260,20 +311,9 @@ public class Manipulacao extends JFrame implements ActionListener{
 			e.printStackTrace();
 		}
 	}
-	
-	/**
-	 * adicionar extensões para salvar
-	 * @created 11/03/2015 - 15:20:51
-	 */
-	@SuppressWarnings("unused")
-	private void defineExt(){
-		//TODO adicionar opções de extensão pra arquivo
-	}
-	
+		
 	/**
 	 * Criar e Salvar arquivo
-	 * @created 11/03/2015 - 17:44:21
-	 * @param content
 	 */
 	public void salvarComoFile(String content){
 		this.jfc = new JFileChooser();
@@ -288,6 +328,7 @@ public class Manipulacao extends JFrame implements ActionListener{
 					if(content != null && !"".equals(content)){
 						bw.write(content);
 					}
+					this.modificado = false;
 					this.defineTitle(this.getNomeArquivo(file.toPath()));
 					this.path = file.toPath();
 					this.closeF(bw);
@@ -300,16 +341,12 @@ public class Manipulacao extends JFrame implements ActionListener{
 		}
 	}
 	
-	/**
-	 * @created 11/03/2015 22:45:22
-	 */
 	private void imprimeInfo(){
 		JOptionPane.showMessageDialog(null, "Alunos:\n- Bruno Henrique Freiberger\n- Cleyson Gustavo Reinhold\n\nProfessor:\n- Matheus Carvalho Viana");
 	}
 	
 	/**
 	 * Salvar file normal
-	 * @param content
 	 */
 	public void salvarFile(String content){
 		try {
@@ -322,6 +359,7 @@ public class Manipulacao extends JFrame implements ActionListener{
 						bw.write(content);
 					}
 					JOptionPane.showMessageDialog(null, "Arquivo alterado com sucesso!");
+					this.modificado = false;
 					this.defineTitle(this.getNomeArquivo(file.toPath()));
 					this.closeF(bw);
 				}
@@ -358,6 +396,30 @@ public class Manipulacao extends JFrame implements ActionListener{
 		
 	}
 
+	
+	/**
+	 * Eventos do DocumentEvent
+	 */
+	
+	@Override
+	public void changedUpdate(DocumentEvent de) {
+		houveAlteracaoTexto();
+	}
+
+	@Override
+	public void insertUpdate(DocumentEvent de) {
+		houveAlteracaoTexto();
+	}
+
+	@Override
+	public void removeUpdate(DocumentEvent de) {
+		houveAlteracaoTexto();
+	}
+
+	public void houveAlteracaoTexto(){
+		this.modificado = true;
+		defineTitle();
+	}
+
+	
 }
-
-
