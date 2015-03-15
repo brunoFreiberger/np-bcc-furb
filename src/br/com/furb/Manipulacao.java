@@ -4,6 +4,7 @@ import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
@@ -38,7 +39,8 @@ public class Manipulacao extends JFrame implements ActionListener, DocumentListe
 	/**
 	 * 
 	 */
-
+	private static final long serialVersionUID = -3929515219741675147L;
+	
 	public static final String INIT_DIR_FCHOOSER = "C:\\";
 	public static final String PROG_NAME = "np-bcc-furb";
 	
@@ -118,9 +120,9 @@ public class Manipulacao extends JFrame implements ActionListener, DocumentListe
 		this.textArea.getDocument().addDocumentListener(this);
 		
 		//Atribui texto dos itens de menu
-		this.miNovo.setText("Novo");
-		this.miAbrir.setText("Abrir...");
-		this.miSalvar.setText("Salvar");
+		this.miNovo.setText("Novo                         CTRL+N");
+		this.miAbrir.setText("Abrir...                      CTRL+O");
+		this.miSalvar.setText("Salvar                      CTRL+S");
 		this.miSalvarComo.setText("Salvar como...");
 		this.miFechar.setText("Fechar");
 		
@@ -142,6 +144,36 @@ public class Manipulacao extends JFrame implements ActionListener, DocumentListe
             }
         };
         this.addWindowListener(exitListener);
+        
+        //Capturar teclas
+        KeyListener keyListener = new KeyListener() {
+			
+			@Override
+			public void keyTyped(KeyEvent e) {
+				
+			}
+			
+			@Override
+			public void keyReleased(KeyEvent e) {
+
+			}
+			
+			@Override
+			public void keyPressed(KeyEvent e) {
+				if(e.isControlDown() && (e.getKeyCode() == 115 || e.getKeyCode() == 83))
+					//Ctrl + S
+					salvarFile(textArea.getText());
+				 else if(e.isControlDown() && (e.getKeyCode() == 111 || e.getKeyCode() == 79))
+					//Ctrl + O
+					openFile();
+				 else if(e.isControlDown() && (e.getKeyCode() == 110 || e.getKeyCode() == 78))
+					//Ctrl + N
+					novoArquivo();
+			}
+		};
+        
+        this.textArea.addKeyListener(keyListener);
+        this.textArea.setFocusable(true);
 		
 		JScrollPane scrollPane = new JScrollPane(textArea);
 		this.add(scrollPane, BorderLayout.CENTER);
