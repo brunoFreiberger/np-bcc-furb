@@ -69,14 +69,14 @@ public class Manipulacao extends JFrame implements ActionListener, DocumentListe
 	private JFileChooser jfc;
 	
 	public Manipulacao() {
-		this.defineLayout();
+		this.initComponents();
 	}
 	
 	public static void main(String[] args) {
 		new Manipulacao();
 	}
 	
-	public void defineLayout(){
+	public void initComponents(){
 		this.setLayout(new BorderLayout());
 		this.setSize(800,600);
 		this.setVisible(true);
@@ -186,12 +186,14 @@ public class Manipulacao extends JFrame implements ActionListener, DocumentListe
 	 * Abrir arquivo
 	 */
 	public void openFile(){
-		jfc = new JFileChooser();
-		jfc.setCurrentDirectory(new File(Manipulacao.INIT_DIR_FCHOOSER)); // Definir diretório inicial que o FChooser vai abrir(C:)
-		int opt = jfc.showOpenDialog(null);
 		Path pathTemp = null;
-		if(opt == JFileChooser.APPROVE_OPTION){
-			pathTemp = Paths.get(jfc.getSelectedFile().toURI());
+		if(!modificado){
+			jfc = new JFileChooser();
+			jfc.setCurrentDirectory(new File(Manipulacao.INIT_DIR_FCHOOSER)); // Definir diretório inicial que o FChooser vai abrir(C:)
+			int opt = jfc.showOpenDialog(null);
+			if(opt == JFileChooser.APPROVE_OPTION){
+				pathTemp = Paths.get(jfc.getSelectedFile().toURI());
+			}
 		}
 		if(modificado){
 			int accept = 0;
@@ -205,6 +207,7 @@ public class Manipulacao extends JFrame implements ActionListener, DocumentListe
 			if(accept != JOptionPane.CANCEL_OPTION){
 				escreveTexto(pathTemp);
 			}
+			this.openFile();
 		}
 		else{
 			escreveTexto(pathTemp);
